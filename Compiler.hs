@@ -67,12 +67,16 @@ bf2asm handle (Sub x) =
         , "    mov [rcx], al"
         ]
 bf2asm handle (LoopL x) =
-    hPutStrLn handle $ "_L" ++ show x ++ ":"
+    mapM_ (hPutStrLn handle)
+        [ "_LS" ++ show x ++ ":"
+        , "    mov al, [rcx]"
+        , "    test al, al"
+        , "    jz _LE" ++ show x
+        ]
 bf2asm handle (LoopR x) =
     mapM_ (hPutStrLn handle)
-        [ "    mov al, [rcx]"
-        , "    test al, al"
-        , "    jnz _L" ++ show x
+        [ "    jmp _LS" ++ show x
+        , "_LE" ++ show x ++ ":"
         ]
 bf2asm handle WriteChar = hPutStrLn handle "    call _printChar"
 bf2asm handle ReadChar  = hPutStrLn handle "    call _readChar"
