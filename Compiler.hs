@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Compiler
     (compileBf) where
 
@@ -8,7 +9,7 @@ compileBf :: BfSource -> FilePath -> IO ()
 compileBf src outname = do
     handle <- openFile outname WriteMode
     -- Beginning of nasm program
-    mapM_ (hPutStrLn handle)
+    hPutStrLn handle $ unlines
         [ "section .bss"
         , "    memory resb 30000"
         , "section .text"
@@ -29,7 +30,7 @@ compileBf src outname = do
         , "    mov rcx, memory"
         ]
     -- Generate code
-    mapM_ (bf2asm handle) (fromBfSource src)
+    mapM_ (bf2asm handle) src
     -- Exit
     hPutStrLn handle "    mov rax, 1"
     hPutStrLn handle "    xor rbx, rbx"
@@ -38,53 +39,36 @@ compileBf src outname = do
 
 
 bf2asm :: Handle -> BfCommand -> IO ()
-bf2asm handle (GoLeft x) = hPutStrLn handle $
-    "    " ++
-        if x == 1
-            then "dec rcx"
-            else "sub rcx, " ++ show x
-bf2asm handle (GoRight x) = hPutStrLn handle $
-    "    " ++
-        if x == 1
-            then "inc rcx"
-            else "add rcx, " ++ show x
-bf2asm handle (Add x) =
-    mapM_ (hPutStrLn handle)
+bf2asm handle = hPutStrLn handle . \case
+    GoRight x -> "    " ++ case () of
+        _ | x == 1    -> "inc rcx"
+          | x == (-1) -> "dec rcx"
+          | x > 0     -> "add rcx," ++ show x
+          | otherwise -> "sub rcx," ++ show (-x)
+    Add x -> unlines
         [ "    mov al, [rcx]"
-        , "    " ++
-            if x == 1
-                then "inc al"
-                else "add al, " ++ show x
+        , "    " ++ case () of
+            _ | x == 1    -> "inc al"
+              | x == (-1) -> "dec al"
+              | x > 0     -> "add al, " ++ show x
+              | otherwise -> "sub al, " ++ show (-x)
         , "    mov [rcx], al"
         ]
-bf2asm handle (Sub x) =
-    mapM_ (hPutStrLn handle)
-        [ "    mov al, [rcx]"
-        , "    " ++
-            if x == 1
-                then "dec al"
-                else "sub al, " ++ show x
-        , "    mov [rcx], al"
-        ]
-bf2asm handle (LoopL x) =
-    mapM_ (hPutStrLn handle)
+    LoopL x -> unlines
         [ "_LS" ++ show x ++ ":"
         , "    mov al, [rcx]"
         , "    test al, al"
         , "    jz _LE" ++ show x
         ]
-bf2asm handle (LoopR x) =
-    mapM_ (hPutStrLn handle)
+    LoopR x -> unlines
         [ "    jmp _LS" ++ show x
         , "_LE" ++ show x ++ ":"
         ]
-bf2asm handle WriteChar = hPutStrLn handle "    call _printChar"
-bf2asm handle ReadChar  = hPutStrLn handle "    call _readChar"
-bf2asm handle (BfConst x) =
-    mapM_ (hPutStrLn handle)
-        [ "    " ++
-            if x == 0
-                then "xor al, al"
-                else "mov al, " ++ show x
+    WriteChar -> "    call _printChar"
+    ReadChar  -> "    call _readChar"
+    BfConst x -> unlines
+        [ "    " ++ case x of
+            0 -> "xor al, al"
+            _ -> "mov al, " ++ show x
         , "    mov [rcx], al"
         ]
