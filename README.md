@@ -6,7 +6,7 @@ It is advised to run programs in an interpreter before compiling them, as `bfcom
 
 ### Compiling `bfcompiler`
 
-To compile `bfcompiler` [the Glasgow Haskell Compiler](https://www.haskell.org/ghc/) is needed.  
+To compile `bfcompiler` the [Glasgow Haskell Compiler](https://www.haskell.org/ghc/) is required.  
 Then, use a similar command:
 
     $ ghc -dynamic -threaded -O2 Main.hs -o bfcompiler
